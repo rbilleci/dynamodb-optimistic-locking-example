@@ -44,13 +44,14 @@ public class TestVersioning {
 
     @Test
     public void testVersioning() {
-        // Create the parent
-        enhancedClient.transactWriteItems(builder -> builder.addPutItem(
-                nodes,
-                Node.builder().id("p").build()));
-
-        // Add the child, updating the parent to increment its version number
+        // Setup the initial state
         {
+            // Create the parent
+            enhancedClient.transactWriteItems(builder -> builder.addPutItem(
+                    nodes,
+                    Node.builder().id("p").build()));
+
+            // Add the child, updating the parent to increment its version number
             final var parent = fetchNode("p");
             final var child = Node.builder().id("c1").parentId("p").build();
             final var relation = NodeRelation.builder()
@@ -58,16 +59,16 @@ public class TestVersioning {
                     .childId(child.id())
                     .build();
             enhancedClient.transactWriteItems(builder -> builder
-                    .addUpdateItem(nodes, parent)
-                    .addPutItem(nodes, child)
-                    .addPutItem(nodeRelations, relation));
+                    .addUpdateItem(nodes, parent) // increments the version number of the parent
+                    .addPutItem(nodes, child)  // creates the child
+                    .addPutItem(nodeRelations, relation)); // adds the relation
         }
 
         // BOB: delete the section, initially moving all children to the root
         enhancedClient.transactWriteItems(builder -> builder
-                .addUpdateItem(nodes, fetchNode("p"))
-                .addUpdateItem(nodes, fetchNode("c1").withParentId(null))
-                .addDeleteItem(nodeRelations, fetchNodeRelation("p", "c1")));
+                .addUpdateItem(nodes, fetchNode("p")) // increments the version number of the parent
+                .addUpdateItem(nodes, fetchNode("c1").withParentId(null)) // move the child
+                .addDeleteItem(nodeRelations, fetchNodeRelation("p", "c1"))); // delete the child relation
         final var bobsVersion = requireNonNull(fetchNode("p").version());
         // NOTE: at this point, we must check there are no children.
         // If children are found, then restart the move process.
@@ -77,20 +78,21 @@ public class TestVersioning {
 
         // ALICE: Meanwhile, Alice adds a new child
         {
-            final Node parent = fetchNode("p");
+            final var parent = fetchNode("p");
             final var child2 = Node.builder().id("c2").parentId("p").build();
             final var relation = NodeRelation.builder()
                     .parentId(parent.id())
                     .childId(child2.id())
                     .build();
             enhancedClient.transactWriteItems(builder -> builder
-                    .addUpdateItem(nodes, parent)
-                    .addPutItem(nodes, child2)
-                    .addPutItem(nodeRelations, relation));
+                    .addUpdateItem(nodes, parent) // increments the version number of the parent
+                    .addPutItem(nodes, child2) // add the child
+                    .addPutItem(nodeRelations, relation)); // add the relation
         }
 
         // BOB: attempt to delete the section,
         // using the OLD version number
+        // We expect an exception here
         assertThrows(TransactionCanceledException.class, () ->
                 enhancedClient.transactWriteItems(builder -> builder
                         .addDeleteItem(nodes, TransactDeleteItemEnhancedRequest.builder()
