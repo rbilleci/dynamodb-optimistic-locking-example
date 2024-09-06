@@ -5,7 +5,6 @@ import ddb_example.model.Node;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.extensions.VersionedRecordExtension;
-import software.amazon.awssdk.enhanced.dynamodb.mapper.StaticAttributeTags;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.StaticImmutableTableSchema;
 
 import static software.amazon.awssdk.enhanced.dynamodb.mapper.StaticAttributeTags.*;
@@ -30,11 +29,6 @@ public class NodeSchema {
                             .getter(Node::version)
                             .setter(Node.NodeBuilder::version)
                             .tags(VersionedRecordExtension.AttributeTags.versionAttribute()))
-                    .addAttribute(Long.class, a -> a
-                            .name("c")
-                            .getter(Node::atomicCounter)
-                            .setter(Node.NodeBuilder::atomicCounter)
-                            .tags(StaticAttributeTags.atomicCounter()))
                     .newItemBuilder(Node::builder, Node.NodeBuilder::build)
                     .build();
 

@@ -6,5 +6,7 @@ import lombok.With;
 import org.jspecify.annotations.Nullable;
 
 @Builder
-public record Node(String id, @Nullable @With String parentId, @Nullable Long version, long atomicCounter) {
+public record Node(String id,
+                   @Nullable @With String parentId,
+                   @Nullable Long version) {
 }
